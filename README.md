@@ -1,159 +1,322 @@
 # 🚀 ai-provider-switch
 
-> One script to rule them all — switch between AI providers instantly ⚡
+<p align="center">
+  <b>Interactive provider switcher for Claude Code</b><br/>
+  Switch between Ollama Cloud, Claude, GLM (z.ai), and DeepSeek from one menu.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/bash-script-121011?style=for-the-badge&logo=gnubash&logoColor=white" alt="Bash">
+  <img src="https://img.shields.io/badge/Claude_Code-supported-7c3aed?style=for-the-badge" alt="Claude Code">
+  <img src="https://img.shields.io/badge/fzf-powered-0f172a?style=for-the-badge" alt="fzf">
+  <img src="https://img.shields.io/badge/license-MIT-16a34a?style=for-the-badge" alt="MIT">
+</p>
 
 ---
 
-## 📖 English
+## Table of contents
 
-### What It Does
+- [Why this exists](#why-this-exists)
+- [Features](#features)
+- [Supported providers](#supported-providers)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Key storage](#key-storage)
+- [Manage saved keys](#manage-saved-keys)
+- [tmux workflow](#tmux-workflow)
+- [Requirements](#requirements)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
-`ai-switch` is a lightweight CLI tool that switches **Claude Code's AI backend** between:
+---
 
-- 🆓 **Free cloud models** via [Ollama](https://ollama.com/search) — run Llama, Qwen, Mistral and others locally or remotely without API fees
-- 💳 **DeepSeek-V4** via [DeepSeek API](https://platform.deepseek.com) — powerful reasoning model with pay-per-use pricing
+## Why this exists
 
-Perfect for toggling between free and paid providers depending on your task complexity.
+If you use **Claude Code** with multiple backends, switching providers manually gets annoying fast.
 
-✅ Checks dependencies (Node.js, Ollama, Claude Code)  
-✅ Auto-detects installed providers  
-✅ Switches active provider with one command  
-✅ Validates versions and warns about conflicts  
-✅ Great for **tmux sessions** — use different models per project window
+`ai-switch` gives you one interactive command that:
 
-### One-Line Install
+- checks dependencies,
+- lets you choose a provider,
+- lets you choose a model,
+- loads the right API settings,
+- starts Claude Code with the selected backend.
+
+It is especially useful if you regularly move between:
+
+- free and paid Ollama Cloud models,
+- direct Anthropic Claude models,
+- GLM via z.ai,
+- DeepSeek API,
+- separate `tmux` sessions or multiple projects.
+
+---
+
+## Features
+
+- ⚡ One command to switch AI backends for Claude Code
+- 🧭 Interactive `fzf` menus
+- 🔐 Built-in **Manage saved keys** menu
+- 💾 Saves provider keys to one persistent config file
+- 🛠 Auto-checks required tools
+- 📦 Auto-installs itself to `/usr/local/bin/ai-switch`
+- 🧵 Great fit for `tmux` workflows
+- 🧩 Separate key storage for each provider
+
+---
+
+## Supported providers
+
+### Ollama Cloud (Free)
+
+Available models include:
+
+- `minimax-m2.7:cloud`
+- `minimax-m2.5:cloud`
+- `glm-4.7:cloud`
+- `glm-4.6:cloud`
+- `qwen3.5:cloud`
+- `qwen3-coder:480b-cloud`
+- `deepseek-v3.1:671b-cloud`
+- `deepseek-v3.2:cloud`
+- `gpt-oss:120b-cloud`
+- `ministral-3:14b-cloud`
+- `mistral-large-3:675b-cloud`
+- `nemotron-3-super`
+- `gemini-3-flash-preview`
+
+Uses:
+
+- `OLLAMA_API_KEY`
+
+### Ollama Cloud (Paid Pro/Max)
+
+Available models include:
+
+- `deepseek-v4-flash:cloud`
+- `deepseek-v4-pro:cloud`
+- `kimi-k2.6:cloud`
+- `glm-5.1:cloud`
+- `glm-5:cloud`
+
+Uses:
+
+- `OLLAMA_API_KEY`
+
+### Claude
+
+Available models:
+
+- `claude-opus-4-7`
+- `claude-sonnet-4-6`
+- `claude-haiku-4-5-20251001`
+
+Uses:
+
+- `ANTHROPIC_API_KEY`
+
+### GLM (z.ai)
+
+Available models:
+
+- `glm-5.1`
+- `glm-5`
+- `glm-5-turbo`
+
+Uses:
+
+- `ZAI_API_KEY`
+
+### DeepSeek API (Pay-per-token)
+
+Available models:
+
+- `deepseek-v4-pro`
+- `deepseek-v4-flash`
+
+Uses:
+
+- `DEEPSEEK_API_KEY`
+
+---
+
+## Installation
+
+### Quick install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/noderguru/ai-provider-switch/main/ai-switch -o ~/ai-switch && chmod +x ~/ai-switch && export PATH="$HOME:$PATH" && echo 'export PATH="$HOME:$PATH"' >> ~/.bashrc
+curl -fsSL https://raw.githubusercontent.com/noderguru/ai-provider-switch/main/ai-switch -o /tmp/ai-switch && chmod +x /tmp/ai-switch && sudo mv /tmp/ai-switch /usr/local/bin/ai-switch
 ```
 
-Or manually:
-
-```bash
-# 1. Download
-curl -fsSL https://raw.githubusercontent.com/noderguru/ai-provider-switch/main/ai-switch -o ~/ai-switch
-
-# 2. Make executable
-chmod +x ~/ai-switch
-
-# 3. Add to PATH
-export PATH="$HOME:$PATH"
-echo 'export PATH="$HOME:$PATH"' >> ~/.bashrc
-```
-
-### Usage
+Then run:
 
 ```bash
 ai-switch
 ```
-<img width="428" height="330" alt="image" src="https://github.com/user-attachments/assets/5d381207-98e0-474a-a480-dc4eaf3530d9" />
 
-<img width="557" height="358" alt="image" src="https://github.com/user-attachments/assets/843beba2-9e77-48ab-8610-1313d351bdf9" />
-
-
-### Use With tmux
-
-Run **different AI backends in each tmux window** — perfect for multi-project workflows:
+### Manual install
 
 ```bash
-!!!Example!!!
-# Window 1 — frontend project with free Ollama model
-tmux new -s progect_1
-cd ~/my__project && ai-switch
-
-# Window 2 — backend project with powerful DeepSeek-V4
-tmux new -s progect_2
-cd ~/my__project_2 && ai-switch
+curl -fsSL https://raw.githubusercontent.com/noderguru/ai-provider-switch/main/ai-switch -o ai-switch
+chmod +x ai-switch
+sudo cp ai-switch /usr/local/bin/ai-switch
+rm -f ai-switch
+hash -r
 ```
 
-### Dependencies Checked
 
-| Tool      | Purpose                          |
-|-----------|----------------------------------|
-| Node.js   | Runtime for JS-based tools       |
-| Ollama    | Free cloud/local LLM runner      |
-| Claude Code | Anthropic's CLI agent          |
+> [!TIP]
+> You can also run the script directly once with `bash ./ai-switch`.  
+> The script is designed to live as a global command at `/usr/local/bin/ai-switch`.
 
 ---
 
-## 📖 Русский
+## Usage
 
-### Что делает скрипт
-
-`ai-switch` — лёгкий CLI-инструмент для переключения **бэкенда Claude Code** между:
-
-- 🆓 **Бесплатными облачными моделями** через [Ollama](https://ollama.com/search) — запускай Llama, Qwen, Mistral и другие локально или удалённо без платы за API
-- 💳 **DeepSeek-V4** через [DeepSeek API](https://platform.deepseek.com) — мощная модель для рассуждений с оплатой по мере использования
-
-Идеально для переключения между бесплатным и платным провайдерами в зависимости от сложности задачи.
-
-✅ Проверяет зависимости (Node.js, Ollama, Claude Code)  
-✅ Автоопределяет установленные провайдеры  
-✅ Переключает активного провайдера одной командой  
-✅ Проверяет версии и предупреждает о конфликтах  
-✅ Удобно для **tmux-сессий** — разные модели для разных проектов
-
-### Установка одной командой
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/noderguru/ai-provider-switch/main/ai-switch -o ~/ai-switch && chmod +x ~/ai-switch && export PATH="$HOME:$PATH" && echo 'export PATH="$HOME:$PATH"' >> ~/.bashrc
-```
-
-Или вручную:
-
-```bash
-# 1. Скачать
-curl -fsSL https://raw.githubusercontent.com/noderguru/ai-provider-switch/main/ai-switch -o ~/ai-switch
-
-# 2. Сделать исполняемым
-chmod +x ~/ai-switch
-
-# 3. Добавить в PATH
-export PATH="$HOME:$PATH"
-echo 'export PATH="$HOME:$PATH"' >> ~/.bashrc
-```
-
-### Использование
+Start the menu:
 
 ```bash
 ai-switch
 ```
 
-### Почему удобно с tmux
+<img width="448" height="411" alt="image" src="https://github.com/user-attachments/assets/4b91e670-9784-449f-8935-879d49a79b82" />
 
-Запускайте **разные AI-бэкенды в каждом окне tmux** — идеально для работы с несколькими проектами:
+<img width="803" height="382" alt="image" src="https://github.com/user-attachments/assets/d534d286-daaf-4d20-bc0a-38ba81648f6c" />
+
+> [!NOTE]
+> If a provider key is already saved, the script reuses it automatically.  
+> If not, it shows the correct link and waits for key input.
+
+---
+
+## Key storage
+
+All provider keys are stored in one persistent file:
 
 ```bash
-!!!Example!!!
-# Window 1 — frontend project with free Ollama model
-tmux new -s progect_1
-cd ~/my__project && ai-switch
-
-# Window 2 — backend project with powerful DeepSeek-V4
-tmux new -s progect_2
-cd ~/my__project_2 && ai-switch
+$HOME/.env_ai-provider-switch
 ```
 
-### Проверяемые зависимости
+Example:
 
-| Инструмент | Назначение                      |
-|------------|---------------------------------|
-| Node.js    | Рантайм для JS-инструментов     |
-| Ollama     | Бесплатный облачный/локальный запуск LLM |
-| Claude Code| CLI-агент от Anthropic          |
+```bash
+OLLAMA_API_KEY="..."
+ANTHROPIC_API_KEY="..."
+ZAI_API_KEY="..."
+DEEPSEEK_API_KEY="..."
+```
+
+This means:
+
+- Ollama key does **not** overwrite DeepSeek key
+- Claude key does **not** overwrite z.ai key
+- all providers can coexist in one config file
+
+> [!IMPORTANT]
+> The script stores keys per provider, not per project directory.
 
 ---
 
-## 🛠️ Troubleshooting
+## Manage saved keys
 
-| Problem | Fix |
-|---------|-----|
-| `ai-switch: command not found` | `export PATH="$HOME:$PATH"` |
-| Claude warns about multiple installs | `npm -g uninstall @anthropic-ai/claude-code` |
-| Native Claude not in PATH | `echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc` |
+`ai-switch` includes a built-in key manager.
+
+You can:
+
+- Show saved keys
+- Update Ollama key
+- Update Claude key
+- Update GLM (z.ai) key
+- Update DeepSeek key
+- Delete one key
+- Delete all keys
+- Go back to the main menu
+
+Saved values are shown in masked form for safety.
 
 ---
 
-## 📜 License
+## tmux workflow
 
-MIT — do whatever you want. Built with 💙 by [noderguru](https://github.com/noderguru).
+This tool works very well with `tmux`.
+
+Example:
+
+```bash
+# Session 1
+tmux new -s frontend
+cd ~/frontend-project
+ai-switch
+
+# Session 2
+tmux new -s backend
+cd ~/backend-project
+ai-switch
+
+# Session 3
+tmux new -s experiments
+cd ~/llm-tests
+ai-switch
+```
+
+This makes it easy to use different providers for different tasks.
+
+---
+
+## Requirements
+
+| Tool | Purpose |
+|------|---------|
+| Node.js | Required by Claude Code tooling |
+| Ollama | Required for Ollama provider flow |
+| Claude Code | Main CLI runner |
+| fzf | Interactive menu interface |
+
+The script checks these automatically at startup.
+
+---
+
+## Troubleshooting
+
+### `ai-switch: command not found`
+
+Reinstall the command to `/usr/local/bin`:
+
+```bash
+sudo cp ai-switch /usr/local/bin/ai-switch
+chmod +x /usr/local/bin/ai-switch
+hash -r
+```
+
+### Claude native install is not found
+
+Add Claude native path:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### Claude warns about multiple installations
+
+Remove the old npm-global install:
+
+```bash
+npm -g uninstall @anthropic-ai/claude-code
+```
+
+### Saved keys seem missing
+
+Check whether this file exists:
+
+```bash
+ls -l $HOME/.env_ai-provider-switch
+```
+
+---
+
+## License
+
+MIT
+
+Built by [noderguru](https://github.com/noderguru)

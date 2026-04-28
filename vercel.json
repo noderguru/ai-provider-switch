@@ -1,5 +1,0 @@
-{
-  "redirects": [
-    { "source": "/", "destination": "/llm_comparison_report.html", "permanent": false }
-  ]
-}

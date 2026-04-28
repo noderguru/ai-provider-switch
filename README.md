@@ -58,12 +58,12 @@ Run **different AI backends in each tmux window** — perfect for multi-project 
 ```bash
 !!!Example!!!
 # Window 1 — frontend project with free Ollama model
-tmux new-window -n frontend
-cd ~/project-frontend && ai-switch ollama
+tmux new -s progect_1
+cd ~/my__project && ai-switch
 
 # Window 2 — backend project with powerful DeepSeek-V4
-tmux new-window -n backend
-cd ~/project-backend && ai-switch deepseek
+tmux new -s progect_2
+cd ~/my__project_2 && ai-switch
 ```
 
 ### Dependencies Checked
@@ -116,12 +116,7 @@ echo 'export PATH="$HOME:$PATH"' >> ~/.bashrc
 ### Использование
 
 ```bash
-ai-switch              # Интерактивный режим — выбор провайдера
-ai-switch claude       # Переключиться на Claude
-ai-switch ollama       # Переключиться на Ollama (бесплатные модели)
-ai-switch deepseek     # Переключиться на DeepSeek-V4 API
-ai-switch status       # Показать текущего провайдера
-ai-switch update       # Обновить все инструменты
+ai-switch
 ```
 
 ### Почему удобно с tmux
@@ -129,13 +124,14 @@ ai-switch update       # Обновить все инструменты
 Запускайте **разные AI-бэкенды в каждом окне tmux** — идеально для работы с несколькими проектами:
 
 ```bash
-# Окно 1 — фронтенд проект с бесплатной моделью Ollama
-tmux new-window -n frontend
-cd ~/project-frontend && ai-switch ollama
+!!!Example!!!
+# Window 1 — frontend project with free Ollama model
+tmux new -s progect_1
+cd ~/my__project && ai-switch
 
-# Окно 2 — бэкенд проект с мощным DeepSeek-V4
-tmux new-window -n backend
-cd ~/project-backend && ai-switch deepseek
+# Window 2 — backend project with powerful DeepSeek-V4
+tmux new -s progect_2
+cd ~/my__project_2 && ai-switch
 ```
 
 ### Проверяемые зависимости

@@ -1,0 +1,184 @@
+#!/bin/bash
+
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# === CHECK & FIX DEPENDENCIES ===
+
+check_node() {
+    if ! command -v node &> /dev/null; then
+        echo -e "${YELLOW}Node.js not found. Installing...${NC}"
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+        apt-get install -y -qq nodejs
+    fi
+    local node_ver=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+    if [ "$node_ver" -lt 18 ]; then
+        echo -e "${YELLOW}Node.js $node_ver < 18. Upgrading...${NC}"
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+        apt-get install -y -qq nodejs
+    fi
+    echo -e "${GREEN}✓ Node.js $(node --version)${NC}"
+}
+
+check_ollama() {
+    if ! command -v ollama &> /dev/null; then
+        echo -e "${YELLOW}Ollama not found. Installing...${NC}"
+        curl -fsSL https://ollama.com/install.sh | sh
+        systemctl enable ollama
+        systemctl start ollama
+    fi
+    echo -e "${GREEN}✓ Ollama $(ollama --version)${NC}"
+}
+
+check_claude() {
+    local claude_path=""
+    local paths=(
+        "/usr/local/bin/claude"
+        "/root/.local/bin/claude"
+        "/root/.claude/bin/claude"
+        "$(npm root -g)/@anthropic-ai/claude-code/bin/claude"
+    )
+    
+    for p in "${paths[@]}"; do
+        if [ -f "$p" ] || [ -L "$p" ]; then
+            claude_path="$p"
+            break
+        fi
+    done
+    
+    if [ -n "$claude_path" ] && ! command -v claude &> /dev/null; then
+        echo -e "${YELLOW}Claude found at $claude_path but not in PATH. Fixing...${NC}"
+        ln -sf "$claude_path" /usr/local/bin/claude 2>/dev/null || \
+        ln -sf "$claude_path" /root/.local/bin/claude 2>/dev/null || \
+        echo 'export PATH="/root/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+    fi
+    
+    if ! command -v claude &> /dev/null; then
+        echo -e "${YELLOW}Claude Code not found. Installing...${NC}"
+        curl -fsSL https://claude.ai/install.sh | bash
+        export PATH="/root/.local/bin:$PATH"
+    fi
+    
+    if ! command -v claude &> /dev/null; then
+        echo -e "${RED}Failed to install Claude Code.${NC}"
+        exit 1
+    fi
+    
+    echo -e "${BLUE}Checking for Claude Code updates...${NC}"
+    claude update 2>/dev/null || true
+    echo -e "${GREEN}✓ Claude Code $(claude --version)${NC}"
+}
+
+# === RUN CHECKS ===
+echo -e "${BLUE}=== Checking dependencies ===${NC}"
+check_node
+check_ollama
+check_claude
+echo ""
+
+# === CHECK fzf ===
+if ! command -v fzf &> /dev/null; then
+    echo -e "${YELLOW}Installing fzf...${NC}"
+    apt-get update -qq && apt-get install -y -qq fzf
+fi
+
+# === STEP 1: Select provider ===
+provider=$(printf "  🦙  Ollama Cloud (Free)\n  🐋  DeepSeek API (Pay-per-token)\n  ❌  Exit" | \
+    fzf --prompt="Select provider > " \
+        --height=9 \
+        --reverse \
+        --no-border \
+        --no-info \
+        --pointer=">" \
+        --marker=">" \
+        --color=pointer:#61afef,fg+:#e5c07b,hl:#61afef,hl+:#61afef,info:#5c6370 | \
+    sed 's/.*🦙.*/ollama/; s/.*🐋.*/deepseek/; s/.*❌.*/exit/')
+
+if [ "$provider" == "exit" ] || [ -z "$provider" ]; then
+    echo -e "${RED}Cancelled${NC}"
+    exit 0
+fi
+
+# === STEP 2: Select model & authenticate ===
+if [ "$provider" == "ollama" ]; then
+    model=$(printf "  minimax-m2.7:cloud        ★ Coding & agents\n  minimax-m2.5:cloud        Balanced\n  glm-4.7:cloud             General purpose\n  glm-4.6:cloud             General purpose\n  qwen3.5:cloud             Multimodal, reasoning\n  qwen3-coder:480b-cloud    Coding giant (480B)\n  deepseek-v3.1:671b-cloud  Reasoning leader (671B)\n  deepseek-v3.2:cloud       Latest DeepSeek\n  gpt-oss:120b-cloud        OpenAI reasoning (120B)\n  ministral-3:14b-cloud     Efficient (14B)\n  mistral-large-3:675b-cloud  Massive (675B)\n  nemotron-3-super          NVIDIA agentic\n  gemini-3-flash-preview    Google fast\n  ❌  Exit" | \
+        fzf --prompt="Select Ollama model > " \
+            --height=18 \
+            --reverse \
+            --no-border \
+            --no-info \
+            --pointer=">" \
+            --marker=">" \
+            --color=pointer:#61afef,fg+:#e5c07b,hl:#61afef,hl+:#61afef,info:#5c6370 | \
+        awk '{print $1}')
+
+    if [ "$model" == "Exit" ] || [ "$model" == "❌" ] || [ -z "$model" ]; then
+        echo -e "${RED}Cancelled${NC}"
+        exit 0
+    fi
+
+    # === CHECK OLLAMA API KEY ===
+    if [ -z "$OLLAMA_API_KEY" ]; then
+        echo ""
+        echo -e "${YELLOW}OLLAMA_API_KEY is not set.${NC}"
+        echo -e "${YELLOW}To use Ollama Cloud models, you need an API key.${NC}"
+        echo ""
+        echo -e "1. Register at ${BLUE}https://ollama.com/${NC}"
+        echo -e "2. Create an API key at ${BLUE}https://ollama.com/settings/keys${NC}"
+        echo ""
+        echo -e "${YELLOW}Paste your Ollama API key below:${NC}"
+        read ollama_key
+        if [ -z "$ollama_key" ]; then
+            echo -e "${RED}API key is required for Ollama Cloud models.${NC}"
+            exit 1
+        fi
+        export OLLAMA_API_KEY="$ollama_key"
+        echo -e "${GREEN}✓ OLLAMA_API_KEY set for this session${NC}"
+    fi
+
+    export ANTHROPIC_BASE_URL="http://localhost:11434/v1"
+    export ANTHROPIC_API_KEY="ollama"
+    export ANTHROPIC_MODEL="$model"
+    export ANTHROPIC_SMALL_FAST_MODEL="$model"
+    
+    echo -e "${GREEN}✓ Ollama Cloud | Model: $model${NC}"
+    ollama launch claude --model "$model"
+
+elif [ "$provider" == "deepseek" ]; then
+    model=$(printf "  deepseek-v4-pro   Maximum quality\n  deepseek-v4-flash ★ Speed & price\n  ❌  Exit" | \
+        fzf --prompt="Select DeepSeek model > " \
+            --height=9 \
+            --reverse \
+            --no-border \
+            --no-info \
+            --pointer=">" \
+            --marker=">" \
+            --color=pointer:#61afef,fg+:#e5c07b,hl:#61afef,hl+:#61afef,info:#5c6370 | \
+        awk '{print $1}')
+
+    if [ "$model" == "Exit" ] || [ "$model" == "❌" ] || [ -z "$model" ]; then
+        echo -e "${RED}Cancelled${NC}"
+        exit 0
+    fi
+
+    if [ -z "$ANTHROPIC_AUTH_TOKEN" ] && [ -z "$DEEPSEEK_API_KEY" ]; then
+        echo -e "${YELLOW}Enter DeepSeek API key:${NC}"
+        read -s deepseek_key
+        if [ -z "$deepseek_key" ]; then
+            echo -e "${RED}Key required${NC}"
+            exit 1
+        fi
+        export ANTHROPIC_AUTH_TOKEN="$deepseek_key"
+    fi
+    
+    unset ANTHROPIC_API_KEY
+    export ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic"
+    export ANTHROPIC_MODEL="$model"
+    export ANTHROPIC_SMALL_FAST_MODEL="deepseek-v4-flash"
+    
+    echo -e "${GREEN}✓ DeepSeek API | Model: $model${NC}"
+    claude
+fi

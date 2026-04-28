@@ -1,219 +1,645 @@
 #!/bin/bash
 
+set -u
+
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# === AUTO-LOAD SAVED KEYS ===
-# Try to load keys from ~/.bashrc if not already set
-if [ -z "$OLLAMA_API_KEY" ] || [ -z "$DEEPSEEK_API_KEY" ]; then
-    if [ -f ~/.bashrc ]; then
-        # Extract and export saved keys
-        ollama_saved=$(grep "^export OLLAMA_API_KEY=" ~/.bashrc 2>/dev/null | tail -1 | cut -d'"' -f2)
-        deepseek_saved=$(grep "^export DEEPSEEK_API_KEY=" ~/.bashrc 2>/dev/null | tail -1 | cut -d'"' -f2)
-        [ -n "$ollama_saved" ] && export OLLAMA_API_KEY="$ollama_saved"
-        [ -n "$deepseek_saved" ] && export DEEPSEEK_API_KEY="$deepseek_saved"
-    fi
-fi
+INSTALL_TARGET="/usr/local/bin/ai-switch"
+ENV_FILE="$HOME/.env_ai-provider-switch"
+MODEL_COL_WIDTH=45
 
-# === SAVE KEY TO ~/.bashrc FUNCTION ===
-save_key_to_bashrc() {
-    local key_name="$1"
-    local key_value="$2"
-
-    # Remove old entries to avoid duplicates
-    sed -i "/^export ${key_name}=/d" ~/.bashrc
-
-    # Append new key
-    echo "export ${key_name}=\"${key_value}\"" >> ~/.bashrc
-    echo -e "${GREEN}✓ ${key_name} saved to ~/.bashrc for future sessions${NC}"
+trim_spaces() {
+  echo "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
 
-# === CHECK & FIX DEPENDENCIES ===
+fmt_option() {
+  local name="$1"
+  local desc="$2"
+  printf " %-38s %s\n" "$name" "$desc"
+}
+
+fmt_model_option() {
+  local name="$1"
+  local desc="$2"
+  printf " %-*s  │  %s\n" "$MODEL_COL_WIDTH" "$name" "$desc"
+}
+
+resolve_script_path() {
+  local src="${BASH_SOURCE[0]:-$0}"
+
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$src" 2>/dev/null && return 0
+  fi
+
+  if command -v readlink >/dev/null 2>&1; then
+    readlink -f "$src" 2>/dev/null && return 0
+  fi
+
+  echo "$src"
+}
+
+install_global_command() {
+  local src target_real src_real
+  src="$(resolve_script_path)"
+
+  if [ ! -f "$src" ]; then
+    return 0
+  fi
+
+  src_real="$src"
+  target_real="$INSTALL_TARGET"
+
+  if command -v realpath >/dev/null 2>&1; then
+    src_real="$(realpath "$src" 2>/dev/null || echo "$src")"
+    if [ -e "$INSTALL_TARGET" ]; then
+      target_real="$(realpath "$INSTALL_TARGET" 2>/dev/null || echo "$INSTALL_TARGET")"
+    fi
+  elif command -v readlink >/dev/null 2>&1; then
+    src_real="$(readlink -f "$src" 2>/dev/null || echo "$src")"
+    if [ -e "$INSTALL_TARGET" ]; then
+      target_real="$(readlink -f "$INSTALL_TARGET" 2>/dev/null || echo "$INSTALL_TARGET")"
+    fi
+  fi
+
+  if [ "$src_real" = "$target_real" ]; then
+    chmod +x "$INSTALL_TARGET" 2>/dev/null || true
+    return 0
+  fi
+
+  if [ ! -f "$INSTALL_TARGET" ] || ! cmp -s "$src" "$INSTALL_TARGET"; then
+    mkdir -p "$(dirname "$INSTALL_TARGET")"
+
+    if cp "$src" "$INSTALL_TARGET" 2>/dev/null; then
+      chmod +x "$INSTALL_TARGET"
+      echo -e "${GREEN}✓ ai-switch installed to ${INSTALL_TARGET}${NC}"
+    elif command -v sudo >/dev/null 2>&1; then
+      sudo cp "$src" "$INSTALL_TARGET" && sudo chmod +x "$INSTALL_TARGET"
+      echo -e "${GREEN}✓ ai-switch installed to ${INSTALL_TARGET}${NC}"
+    else
+      echo -e "${RED}Cannot install ai-switch to ${INSTALL_TARGET}. Run as root.${NC}"
+    fi
+  fi
+}
+
+load_env_file() {
+  if [ -f "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
+  fi
+}
+
+save_env_var() {
+  local key="$1"
+  local value="$2"
+  local escaped_value
+
+  escaped_value=$(printf '%s' "$value" | sed 's/[\\/&]/\\&/g; s/"/\\"/g')
+
+  touch "$ENV_FILE"
+
+  if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
+    sed -i "s|^${key}=.*|${key}=\"${escaped_value}\"|" "$ENV_FILE"
+  else
+    echo "${key}=\"${escaped_value}\"" >> "$ENV_FILE"
+  fi
+
+  export "$key=$value"
+  echo -e "${GREEN}✓ ${key} saved to ${ENV_FILE}${NC}"
+}
+
+delete_env_var() {
+  local key="$1"
+
+  if [ -f "$ENV_FILE" ]; then
+    sed -i "/^${key}=/d" "$ENV_FILE"
+  fi
+
+  unset "$key" 2>/dev/null || true
+  echo -e "${GREEN}✓ ${key} removed from ${ENV_FILE}${NC}"
+}
+
+mask_value() {
+  local value="$1"
+  local len=${#value}
+
+  if [ "$len" -eq 0 ]; then
+    echo "(not set)"
+  elif [ "$len" -le 8 ]; then
+    echo "********"
+  else
+    echo "${value:0:4}***${value: -4}"
+  fi
+}
+
+show_saved_keys() {
+  load_env_file
+  echo ""
+  echo -e "${BLUE}Saved keys in ${ENV_FILE}:${NC}"
+  echo "OLLAMA_API_KEY    = $(mask_value "${OLLAMA_API_KEY:-}")"
+  echo "ANTHROPIC_API_KEY = $(mask_value "${ANTHROPIC_API_KEY:-}")"
+  echo "ZAI_API_KEY       = $(mask_value "${ZAI_API_KEY:-}")"
+  echo "DEEPSEEK_API_KEY  = $(mask_value "${DEEPSEEK_API_KEY:-}")"
+  echo ""
+  read -r -p "Press Enter to continue..."
+}
+
+update_key_prompt() {
+  local env_name="$1"
+  local title="$2"
+  local help_text="$3"
+  local key_value
+
+  echo ""
+  echo -e "${YELLOW}${title}${NC}"
+  echo ""
+  printf "%b\n" "$help_text"
+  echo ""
+  echo -e "${YELLOW}Paste the new value for ${env_name}:${NC}"
+  read key_value
+
+  if [ -z "$key_value" ]; then
+    echo -e "${RED}Value cannot be empty.${NC}"
+    return 1
+  fi
+
+  save_env_var "$env_name" "$key_value"
+}
+
+manage_saved_keys() {
+  while true; do
+    local action
+    action=$(
+      {
+        fmt_option "Show saved keys" ""
+        fmt_option "Update Ollama key" ""
+        fmt_option "Update Claude key" ""
+        fmt_option "Update GLM (z.ai) key" ""
+        fmt_option "Update DeepSeek key" ""
+        fmt_option "Delete Ollama key" ""
+        fmt_option "Delete Claude key" ""
+        fmt_option "Delete GLM (z.ai) key" ""
+        fmt_option "Delete DeepSeek key" ""
+        fmt_option "Delete all saved keys" ""
+        fmt_option "Back" ""
+      } | fzf --prompt="Manage saved keys > " \
+              --height=14 \
+              --reverse \
+              --no-border \
+              --no-info \
+              --pointer=">" \
+              --marker=">" \
+              --color=pointer:#61afef,fg+:#e5c07b,hl:#61afef,hl+:#61afef,info:#5c6370 | \
+          sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | sed 's/ \{2,\}.*$//'
+    )
+
+    if [ -z "$action" ]; then
+      return 0
+    fi
+
+    case "$action" in
+      "Show saved keys")
+        show_saved_keys
+        ;;
+      "Update Ollama key")
+        update_key_prompt \
+          "OLLAMA_API_KEY" \
+          "Ollama Cloud API key" \
+          "1. Register at ${BLUE}https://ollama.com/${NC}
+2. Create an API key at ${BLUE}https://ollama.com/settings/keys${NC}"
+        ;;
+      "Update Claude key")
+        update_key_prompt \
+          "ANTHROPIC_API_KEY" \
+          "Claude API key" \
+          "${BLUE}https://platform.claude.com/settings/workspaces/default/keys${NC}"
+        ;;
+      "Update GLM (z.ai) key")
+        update_key_prompt \
+          "ZAI_API_KEY" \
+          "GLM (z.ai) API key" \
+          "Access ${BLUE}https://z.ai/model-api${NC}, Register or Login.
+Create an API Key in the ${BLUE}https://z.ai/manage-apikey/apikey-list${NC} management page."
+        ;;
+      "Update DeepSeek key")
+        update_key_prompt \
+          "DEEPSEEK_API_KEY" \
+          "DeepSeek API key" \
+          "${BLUE}https://platform.deepseek.com/${NC}"
+        ;;
+      "Delete Ollama key")
+        delete_env_var "OLLAMA_API_KEY"
+        ;;
+      "Delete Claude key")
+        delete_env_var "ANTHROPIC_API_KEY"
+        ;;
+      "Delete GLM (z.ai) key")
+        delete_env_var "ZAI_API_KEY"
+        ;;
+      "Delete DeepSeek key")
+        delete_env_var "DEEPSEEK_API_KEY"
+        ;;
+      "Delete all saved keys")
+        delete_env_var "OLLAMA_API_KEY"
+        delete_env_var "ANTHROPIC_API_KEY"
+        delete_env_var "ZAI_API_KEY"
+        delete_env_var "DEEPSEEK_API_KEY"
+        ;;
+      "Back")
+        return 0
+        ;;
+    esac
+
+    load_env_file
+  done
+}
+
 check_node() {
-    if ! command -v node &> /dev/null; then
-        echo -e "${YELLOW}Node.js not found. Installing...${NC}"
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-        apt-get install -y -qq nodejs
-    fi
-    local node_ver=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$node_ver" -lt 18 ]; then
-        echo -e "${YELLOW}Node.js $node_ver < 18. Upgrading...${NC}"
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-        apt-get install -y -qq nodejs
-    fi
-    echo -e "${GREEN}✓ Node.js $(node --version)${NC}"
+  if ! command -v node >/dev/null 2>&1; then
+    echo -e "${YELLOW}Node.js not found. Installing...${NC}"
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    apt-get install -y -qq nodejs
+  fi
+
+  local node_ver
+  node_ver=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+
+  if [ "$node_ver" -lt 18 ]; then
+    echo -e "${YELLOW}Node.js ${node_ver} < 18. Upgrading...${NC}"
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    apt-get install -y -qq nodejs
+  fi
+
+  echo -e "${GREEN}✓ Node.js $(node --version)${NC}"
 }
 
 check_ollama() {
-    if ! command -v ollama &> /dev/null; then
-        echo -e "${YELLOW}Ollama not found. Installing...${NC}"
-        curl -fsSL https://ollama.com/install.sh | sh
-        systemctl enable ollama
-        systemctl start ollama
-    fi
-    echo -e "${GREEN}✓ Ollama $(ollama --version)${NC}"
+  if ! command -v ollama >/dev/null 2>&1; then
+    echo -e "${YELLOW}Ollama not found. Installing...${NC}"
+    curl -fsSL https://ollama.com/install.sh | sh
+    systemctl enable ollama >/dev/null 2>&1 || true
+    systemctl start ollama >/dev/null 2>&1 || true
+  fi
+
+  echo -e "${GREEN}✓ Ollama $(ollama --version)${NC}"
 }
 
 check_claude() {
-    local claude_path=""
-    local paths=(
-        "/usr/local/bin/claude"
-        "/root/.local/bin/claude"
-        "/root/.claude/bin/claude"
-        "$(npm root -g)/@anthropic-ai/claude-code/bin/claude"
-    )
+  if [ -x "$HOME/.local/bin/claude" ]; then
+    export PATH="$HOME/.local/bin:$PATH"
+  fi
 
-    for p in "${paths[@]}"; do
-        if [ -f "$p" ] || [ -L "$p" ]; then
-            claude_path="$p"
-            break
-        fi
-    done
+  if ! command -v claude >/dev/null 2>&1; then
+    echo -e "${YELLOW}Claude Code not found. Installing native version...${NC}"
+    curl -fsSL https://claude.ai/install.sh | bash
+    export PATH="$HOME/.local/bin:$PATH"
+  fi
 
-    if [ -n "$claude_path" ] && ! command -v claude &> /dev/null; then
-        echo -e "${YELLOW}Claude found at $claude_path but not in PATH. Fixing...${NC}"
-        ln -sf "$claude_path" /usr/local/bin/claude 2>/dev/null || \
-        ln -sf "$claude_path" /root/.local/bin/claude 2>/dev/null || \
-        echo 'export PATH="/root/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
-    fi
+  if ! command -v claude >/dev/null 2>&1; then
+    echo -e "${RED}Failed to install Claude Code.${NC}"
+    exit 1
+  fi
 
-    if ! command -v claude &> /dev/null; then
-        echo -e "${YELLOW}Claude Code not found. Installing...${NC}"
-        curl -fsSL https://claude.ai/install.sh | bash
-        export PATH="/root/.local/bin:$PATH"
-    fi
-
-    if ! command -v claude &> /dev/null; then
-        echo -e "${RED}Failed to install Claude Code.${NC}"
-        exit 1
-    fi
-
-    echo -e "${BLUE}Checking for Claude Code updates...${NC}"
-    claude update 2>/dev/null || true
-    echo -e "${GREEN}✓ Claude Code $(claude --version)${NC}"
+  echo -e "${BLUE}Checking for Claude Code updates...${NC}"
+  claude update 2>/dev/null || true
+  echo -e "${GREEN}✓ Claude Code $(claude --version)${NC}"
 }
 
-# === RUN CHECKS ===
-echo -e "${BLUE}=== Checking dependencies ===${NC}"
-check_node
-check_ollama
-check_claude
-echo ""
-
-# === CHECK fzf ===
-if ! command -v fzf &> /dev/null; then
+check_fzf() {
+  if ! command -v fzf >/dev/null 2>&1; then
     echo -e "${YELLOW}Installing fzf...${NC}"
     apt-get update -qq && apt-get install -y -qq fzf
-fi
+  fi
+}
 
-# === STEP 1: Select provider ===
-provider=$(printf "  🦙  Ollama Cloud (Free)\n  🐋  DeepSeek API (Pay-per-token)\n  ❌  Exit" | \
-    fzf --prompt="Select provider > " \
-        --height=9 \
-        --reverse \
-        --no-border \
-        --no-info \
-        --pointer=">" \
-        --marker=">" \
-        --color=pointer:#61afef,fg+:#e5c07b,hl:#61afef,hl+:#61afef,info:#5c6370 | \
-    sed 's/.*🦙.*/ollama/; s/.*🐋.*/deepseek/; s/.*❌.*/exit/')
+prompt_api_key_if_missing() {
+  local env_name="$1"
+  local title="$2"
+  local help_text="$3"
+  local current_value
+  local key_value
 
-if [ "$provider" == "exit" ] || [ -z "$provider" ]; then
+  load_env_file
+  current_value="${!env_name:-}"
+
+  if [ -z "$current_value" ]; then
+    echo ""
+    echo -e "${YELLOW}${env_name} is not set.${NC}"
+    echo -e "${YELLOW}${title}${NC}"
+    echo ""
+    printf "%b\n" "$help_text"
+    echo ""
+    echo -e "${YELLOW}Paste your API key below:${NC}"
+    read key_value
+
+    if [ -z "$key_value" ]; then
+      echo -e "${RED}API key is required.${NC}"
+      return 1
+    fi
+
+    save_env_var "$env_name" "$key_value"
+  else
+    echo -e "${GREEN}✓ Using saved ${env_name}${NC}"
+  fi
+}
+
+clear_provider_env() {
+  unset ANTHROPIC_API_KEY
+  unset ANTHROPIC_AUTH_TOKEN
+  unset ANTHROPIC_BASE_URL
+  unset ANTHROPIC_MODEL
+  unset ANTHROPIC_SMALL_FAST_MODEL
+  unset ENABLE_TOOL_SEARCH
+}
+
+select_provider() {
+  {
+    fmt_option "🦙 Ollama Cloud (Free)" ""
+    fmt_option "💼 Ollama Cloud (Paid Pro/Max)" ""
+    fmt_option "🤖 Claude" ""
+    fmt_option "🌐 GLM (z.ai)" ""
+    fmt_option "🐋 DeepSeek API (Pay-per-token)" ""
+    fmt_option "🔐 Manage saved keys" ""
+    fmt_option "❌ Exit" ""
+  } | fzf --prompt="Select provider > " \
+          --height=11 \
+          --reverse \
+          --no-border \
+          --no-info \
+          --pointer=">" \
+          --marker=">" \
+          --color=pointer:#61afef,fg+:#e5c07b,hl:#61afef,hl+:#61afef,info:#5c6370
+}
+
+select_model_from_stream() {
+  local prompt="$1"
+  local height="$2"
+
+  fzf --prompt="$prompt" \
+      --height="$height" \
+      --reverse \
+      --no-border \
+      --no-info \
+      --pointer=">" \
+      --marker=">" \
+      --color=pointer:#61afef,fg+:#e5c07b,hl:#61afef,hl+:#61afef,info:#5c6370 | \
+  awk '{print $1}'
+}
+
+run_ollama_free() {
+  local model
+  model=$(
+    {
+      fmt_model_option "minimax-m2.7:cloud" "Coding & agents"
+      fmt_model_option "minimax-m2.5:cloud" "Balanced"
+      fmt_model_option "glm-4.7:cloud" "General purpose"
+      fmt_model_option "glm-4.6:cloud" "General purpose"
+      fmt_model_option "qwen3.5:cloud" "Multimodal, reasoning"
+      fmt_model_option "qwen3-coder:480b-cloud" "Coding giant (480B)"
+      fmt_model_option "deepseek-v3.1:671b-cloud" "Reasoning leader (671B)"
+      fmt_model_option "deepseek-v3.2:cloud" "Latest DeepSeek"
+      fmt_model_option "gpt-oss:120b-cloud" "OpenAI reasoning (120B)"
+      fmt_model_option "ministral-3:14b-cloud" "Efficient (14B)"
+      fmt_model_option "mistral-large-3:675b-cloud" "Massive (675B)"
+      fmt_model_option "nemotron-3-super" "NVIDIA agentic"
+      fmt_model_option "gemini-3-flash-preview" "Google fast"
+      fmt_model_option "⬅" "Back"
+      fmt_model_option "❌" "Exit"
+    } | select_model_from_stream "Select Ollama Free model > " 18
+  )
+
+  if [ -z "$model" ] || [ "$model" = "⬅" ]; then
+    return 0
+  fi
+
+  if [ "$model" = "❌" ]; then
     echo -e "${RED}Cancelled${NC}"
     exit 0
-fi
+  fi
 
-# === STEP 2: Select model & authenticate ===
-if [ "$provider" == "ollama" ]; then
-    model=$(printf "  minimax-m2.7:cloud        ★ Coding & agents\n  minimax-m2.5:cloud        Balanced\n  glm-4.7:cloud             General purpose\n  glm-4.6:cloud             General purpose\n  qwen3.5:cloud             Multimodal, reasoning\n  qwen3-coder:480b-cloud    Coding giant (480B)\n  deepseek-v3.1:671b-cloud  Reasoning leader (671B)\n  deepseek-v3.2:cloud       Latest DeepSeek\n  gpt-oss:120b-cloud        OpenAI reasoning (120B)\n  ministral-3:14b-cloud     Efficient (14B)\n  mistral-large-3:675b-cloud  Massive (675B)\n  nemotron-3-super          NVIDIA agentic\n  gemini-3-flash-preview    Google fast\n  ❌  Exit" | \
-        fzf --prompt="Select Ollama model > " \
-            --height=18 \
-            --reverse \
-            --no-border \
-            --no-info \
-            --pointer=">" \
-            --marker=">" \
-            --color=pointer:#61afef,fg+:#e5c07b,hl:#61afef,hl+:#61afef,info:#5c6370 | \
-        awk '{print $1}')
+  prompt_api_key_if_missing \
+    "OLLAMA_API_KEY" \
+    "To use Ollama Cloud models, you need an API key." \
+    "1. Register at ${BLUE}https://ollama.com/${NC}
+2. Create an API key at ${BLUE}https://ollama.com/settings/keys${NC}" || return 0
 
-    if [ "$model" == "Exit" ] || [ "$model" == "❌" ] || [ -z "$model" ]; then
+  clear_provider_env
+  export OLLAMA_API_KEY="${OLLAMA_API_KEY:-}"
+
+  echo -e "${GREEN}✓ Ollama Cloud (Free) | Model: $model${NC}"
+  ollama launch claude --model "$model"
+  return 0
+}
+
+run_ollama_paid() {
+  local model
+  model=$(
+    {
+      fmt_model_option "deepseek-v4-flash:cloud" "functionality is close to GPT-4o-mini or Claude Haiku"
+      fmt_model_option "deepseek-v4-pro:cloud" "budget flagship competes with Claude Opus 4.6 and GPT-5.5"
+      fmt_model_option "kimi-k2.6:cloud" "an excellent alternative to top vendors"
+      fmt_model_option "glm-5.1:cloud" "overall aligned with Claude Opus 4.6"
+      fmt_model_option "glm-5:cloud" "approaching that of Claude Opus 4.5"
+      fmt_model_option "⬅" "Back"
+      fmt_model_option "❌" "Exit"
+    } | select_model_from_stream "Select Ollama Paid model > " 12
+  )
+
+  if [ -z "$model" ] || [ "$model" = "⬅" ]; then
+    return 0
+  fi
+
+  if [ "$model" = "❌" ]; then
+    echo -e "${RED}Cancelled${NC}"
+    exit 0
+  fi
+
+  prompt_api_key_if_missing \
+    "OLLAMA_API_KEY" \
+    "To use Ollama Cloud models, you need an API key." \
+    "1. Register at ${BLUE}https://ollama.com/${NC}
+2. Create an API key at ${BLUE}https://ollama.com/settings/keys${NC}" || return 0
+
+  clear_provider_env
+  export OLLAMA_API_KEY="${OLLAMA_API_KEY:-}"
+
+  echo -e "${GREEN}✓ Ollama Cloud (Paid Pro/Max) | Model: $model${NC}"
+  ollama launch claude --model "$model"
+  return 0
+}
+
+run_claude_direct() {
+  local model api_key
+  model=$(
+    {
+      fmt_model_option "claude-opus-4-7" "most powerful"
+      fmt_model_option "claude-sonnet-4-6" "combination of speed and intelligence"
+      fmt_model_option "claude-haiku-4-5-20251001" "fastest model"
+      fmt_model_option "⬅" "Back"
+      fmt_model_option "❌" "Exit"
+    } | select_model_from_stream "Select Claude model > " 9
+  )
+
+  if [ -z "$model" ] || [ "$model" = "⬅" ]; then
+    return 0
+  fi
+
+  if [ "$model" = "❌" ]; then
+    echo -e "${RED}Cancelled${NC}"
+    exit 0
+  fi
+
+  prompt_api_key_if_missing \
+    "ANTHROPIC_API_KEY" \
+    "If you do not have an API key, create one here:" \
+    "${BLUE}https://platform.claude.com/settings/workspaces/default/keys${NC}" || return 0
+
+  api_key="${ANTHROPIC_API_KEY:-}"
+
+  clear_provider_env
+  export ANTHROPIC_API_KEY="$api_key"
+  export ANTHROPIC_MODEL="$model"
+  export ANTHROPIC_SMALL_FAST_MODEL="$model"
+
+  echo -e "${GREEN}✓ Claude | Model: $model${NC}"
+  claude --model "$model"
+  return 0
+}
+
+run_glm_zai() {
+  local model api_key
+  model=$(
+    {
+      fmt_model_option "glm-5.1" "overall aligned with Claude Opus 4.6"
+      fmt_model_option "glm-5" "approaching that of Claude Opus 4.5"
+      fmt_model_option "glm-5-turbo" "optimized for the OpenClaw scenario"
+      fmt_model_option "⬅" "Back"
+      fmt_model_option "❌" "Exit"
+    } | select_model_from_stream "Select GLM (z.ai) model > " 9
+  )
+
+  if [ -z "$model" ] || [ "$model" = "⬅" ]; then
+    return 0
+  fi
+
+  if [ "$model" = "❌" ]; then
+    echo -e "${RED}Cancelled${NC}"
+    exit 0
+  fi
+
+  prompt_api_key_if_missing \
+    "ZAI_API_KEY" \
+    "Access ${BLUE}https://z.ai/model-api${NC}, Register or Login." \
+    "Create an API Key in the ${BLUE}https://z.ai/manage-apikey/apikey-list${NC} management page." || return 0
+
+  api_key="${ZAI_API_KEY:-}"
+
+  clear_provider_env
+  export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
+  export ANTHROPIC_AUTH_TOKEN="$api_key"
+  export ANTHROPIC_MODEL="$model"
+  export ANTHROPIC_SMALL_FAST_MODEL="glm-5-turbo"
+
+  echo -e "${GREEN}✓ GLM (z.ai) | Model: $model${NC}"
+  claude --model "$model"
+  return 0
+}
+
+run_deepseek() {
+  local model api_key
+  model=$(
+    {
+      fmt_model_option "deepseek-v4-pro" "Maximum quality"
+      fmt_model_option "deepseek-v4-flash" "Speed & price"
+      fmt_model_option "⬅" "Back"
+      fmt_model_option "❌" "Exit"
+    } | select_model_from_stream "Select DeepSeek model > " 9
+  )
+
+  if [ -z "$model" ] || [ "$model" = "⬅" ]; then
+    return 0
+  fi
+
+  if [ "$model" = "❌" ]; then
+    echo -e "${RED}Cancelled${NC}"
+    exit 0
+  fi
+
+  prompt_api_key_if_missing \
+    "DEEPSEEK_API_KEY" \
+    "Get your key at:" \
+    "${BLUE}https://platform.deepseek.com/${NC}" || return 0
+
+  api_key="${DEEPSEEK_API_KEY:-}"
+
+  clear_provider_env
+  export ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic"
+  export ANTHROPIC_AUTH_TOKEN="$api_key"
+  export ANTHROPIC_MODEL="$model"
+  export ANTHROPIC_SMALL_FAST_MODEL="deepseek-v4-flash"
+
+  echo -e "${GREEN}✓ DeepSeek API | Model: $model${NC}"
+  claude --model "$model"
+  return 0
+}
+
+main() {
+  install_global_command
+  load_env_file
+
+  echo -e "${BLUE}=== Checking dependencies ===${NC}"
+  check_node
+  check_ollama
+  check_claude
+  check_fzf
+  echo ""
+
+  while true; do
+    local provider_line provider
+    provider_line=$(select_provider)
+
+    if [ -z "$provider_line" ]; then
+      echo -e "${RED}Cancelled${NC}"
+      exit 0
+    fi
+
+    provider=$(trim_spaces "$provider_line")
+    provider=$(echo "$provider" | sed 's/ \{2,\}.*$//')
+
+    case "$provider" in
+      "🦙 Ollama Cloud (Free)")
+        run_ollama_free
+        ;;
+      "💼 Ollama Cloud (Paid Pro/Max)")
+        run_ollama_paid
+        ;;
+      "🤖 Claude")
+        run_claude_direct
+        ;;
+      "🌐 GLM (z.ai)")
+        run_glm_zai
+        ;;
+      "🐋 DeepSeek API (Pay-per-token)")
+        run_deepseek
+        ;;
+      "🔐 Manage saved keys")
+        manage_saved_keys
+        ;;
+      "❌ Exit")
         echo -e "${RED}Cancelled${NC}"
         exit 0
-    fi
+        ;;
+      *)
+        echo -e "${RED}Unknown provider selected${NC}"
+        exit 1
+        ;;
+    esac
+  done
+}
 
-    # === CHECK OLLAMA API KEY (auto-load + save) ===
-    if [ -z "$OLLAMA_API_KEY" ]; then
-        echo ""
-        echo -e "${YELLOW}OLLAMA_API_KEY is not set.${NC}"
-        echo -e "${YELLOW}To use Ollama Cloud models, you need an API key.${NC}"
-        echo ""
-        echo -e "1. Register at ${BLUE}https://ollama.com/${NC}"
-        echo -e "2. Create an API key at ${BLUE}https://ollama.com/settings/keys${NC}"
-        echo ""
-        echo -e "${YELLOW}Paste your Ollama API key below:${NC}"
-        read ollama_key
-        if [ -z "$ollama_key" ]; then
-            echo -e "${RED}API key is required for Ollama Cloud models.${NC}"
-            exit 1
-        fi
-        export OLLAMA_API_KEY="$ollama_key"
-        save_key_to_bashrc "OLLAMA_API_KEY" "$ollama_key"
-    else
-        echo -e "${GREEN}✓ Using saved OLLAMA_API_KEY${NC}"
-    fi
-
-    export ANTHROPIC_BASE_URL="http://localhost:11434/v1"
-    export ANTHROPIC_API_KEY="ollama"
-    export ANTHROPIC_MODEL="$model"
-    export ANTHROPIC_SMALL_FAST_MODEL="$model"
-
-    echo -e "${GREEN}✓ Ollama Cloud | Model: $model${NC}"
-    ollama launch claude --model "$model"
-
-elif [ "$provider" == "deepseek" ]; then
-    model=$(printf "  deepseek-v4-pro   Maximum quality\n  deepseek-v4-flash ★ Speed & price\n  ❌  Exit" | \
-        fzf --prompt="Select DeepSeek model > " \
-            --height=9 \
-            --reverse \
-            --no-border \
-            --no-info \
-            --pointer=">" \
-            --marker=">" \
-            --color=pointer:#61afef,fg+:#e5c07b,hl:#61afef,hl+:#61afef,info:#5c6370 | \
-        awk '{print $1}')
-
-    if [ "$model" == "Exit" ] || [ "$model" == "❌" ] || [ -z "$model" ]; then
-        echo -e "${RED}Cancelled${NC}"
-        exit 0
-    fi
-
-    # === CHECK DEEPSEEK API KEY (auto-load + save) ===
-    if [ -z "$DEEPSEEK_API_KEY" ]; then
-        echo -e "${YELLOW}DEEPSEEK_API_KEY is not set.${NC}"
-        echo -e "${YELLOW}Get your key at: ${BLUE}https://platform.deepseek.com/${NC}"
-        echo -e "${YELLOW}Paste your DeepSeek API key below:${NC}"
-        read -s deepseek_key
-        echo ""
-        if [ -z "$deepseek_key" ]; then
-            echo -e "${RED}Key required${NC}"
-            exit 1
-        fi
-        export DEEPSEEK_API_KEY="$deepseek_key"
-        export ANTHROPIC_AUTH_TOKEN="$deepseek_key"
-        save_key_to_bashrc "DEEPSEEK_API_KEY" "$deepseek_key"
-    else
-        echo -e "${GREEN}✓ Using saved DEEPSEEK_API_KEY${NC}"
-        export ANTHROPIC_AUTH_TOKEN="$DEEPSEEK_API_KEY"
-    fi
-
-    unset ANTHROPIC_API_KEY
-    export ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic"
-    export ANTHROPIC_MODEL="$model"
-    export ANTHROPIC_SMALL_FAST_MODEL="deepseek-v4-flash"
-
-    echo -e "${GREEN}✓ DeepSeek API | Model: $model${NC}"
-    claude
-fi
+main

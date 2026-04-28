@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Models Comparison — Benchmarks & Pricing 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #f1f3f5;
+            --bg-card: #ffffff;
+            --border-color: #e9ecef;
+            --border-light: #dee2e6;
+            --text-primary: #1a1a2e;
+            --text-secondary: #495057;
+            --text-muted: #868e96;
+            --accent: #4361ee;
+            --accent-light: #eef2ff;
+            --accent-hover: #3451d1;
+            --success: #2d9a4e;
+            --success-light: #e8f5ec;
+            --warning: #e67e22;
+            --warning-light: #fef3e6;
+            --danger: #dc3545;
+            --danger-light: #fde8eb;
+            --reference-accent: #f06595;
+            --reference-light: #fff0f7;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --transition: all 0.2s ease;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --bg-card: #1c2128;
+            --border-color: #30363d;
+            --border-light: #21262d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-light: #1e2a4a;
+            --accent-hover: #5a7df4;
+            --success-light: #1a2e1f;
+            --warning-light: #2d2416;
+            --danger-light: #2d1f21;
+            --reference-light: #2d1f2a;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: var(--transition);
+        }
+
+        .container {
+            max-width: 1500px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            background: rgba(255,255,255,0.9);
+        }
+
+        [data-theme="dark"] .header {
+            background: rgba(13,17,23,0.95);
+        }
+
+        .header-inner {
+            max-width: 1500px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .author {
+            margin-left: auto;
+            margin-right: 1rem;
+        }
+
+        .author a {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+
+        .author a:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+
+        .author a svg {
+            flex-shrink: 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        /* Toggle Switch */
+        .toggle-group {
+            display: flex;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            gap: 2px;
+        }
+
+        .toggle-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .toggle-btn.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .toggle-btn:hover:not(.active) {
+            color: var(--text-secondary);
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            width: 44px;
+            height: 44px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--accent);
+            transform: scale(1.05);
+        }
+
+        .theme-toggle svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-secondary);
+            transition: var(--transition);
+        }
+
+        /* Main Content */
+        .main {
+            padding: 2rem 0;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Section */
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-title svg {
+            width: 22px;
+            height: 22px;
+            color: var(--accent);
+        }
+
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 0 -1.5rem;
+            padding: 0 1.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        th, td {
+            padding: 0.875rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-light);
+            white-space: nowrap;
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: var(--bg-tertiary);
+            position: sticky;
+            top: 0;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: var(--bg-tertiary);
+        }
+
+        .model-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .reference-row td {
+            background: var(--reference-light);
+            border-radius: var(--radius-md);
+        }
+
+        .reference-row:hover td {
+            background: var(--reference-light);
+        }
+
+        .reference-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.2rem 0.6rem;
+            background: var(--reference-accent);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 600;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .score {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+        }
+
+        .score-high {
+            color: var(--success);
+        }
+
+        .score-medium {
+            color: var(--accent);
+        }
+
+        .score-low {
+            color: var(--text-muted);
+        }
+
+        .price-input {
+            color: var(--success);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .price-output {
+            color: var(--warning);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1100px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .chart-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chart-title svg {
+            width: 18px;
+            height: 18px;
+            color: var(--accent);
+        }
+
+        .chart-container {
+            height: 280px;
+            position: relative;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        @media (max-width: 1000px) {
+            .cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 650px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 1.125rem;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .card-icon.green {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .card-icon.blue {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .card-icon.orange {
+            background: var(--warning-light);
+            color: var(--warning);
+        }
+
+        .card-icon.purple {
+            background: #f3e8ff;
+            color: #9333ea;
+        }
+
+        [data-theme="dark"] .card-icon.purple {
+            background: #2d1f3d;
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+
+        .card-model {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .card p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Conclusion Box */
+        .conclusion-box {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .conclusion-box h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .conclusion-box h4 svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .conclusion-box.green h4 {
+            color: var(--success);
+        }
+
+        .conclusion-box.orange h4 {
+            color: var(--warning);
+        }
+
+        .conclusion-box.blue h4 {
+            color: var(--accent);
+        }
+
+        .conclusion-box ul {
+            margin-left: 1.25rem;
+            margin-top: 0.75rem;
+        }
+
+        .conclusion-box li {
+            margin: 0.4rem 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .conclusion-box p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .highlight {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        /* Tag */
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-top: 0.75rem;
+        }
+
+        .tag.green {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .tag.blue {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .tag.orange {
+            background: var(--warning-light);
+            color: var(--warning);
+        }
+
+        .tag.purple {
+            background: #f3e8ff;
+            color: #9333ea;
+        }
+
+        [data-theme="dark"] .tag.purple {
+            background: #2d1f3d;
+        }
+
+        /* Note */
+        .note {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-style: italic;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-light);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        /* Sources */
+        .sources-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .sources-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .source-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .source-card-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .source-card a {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: var(--transition);
+        }
+
+        .source-card a:hover {
+            color: var(--accent-hover);
+            text-decoration: underline;
+        }
+
+        .source-card a svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .source-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Project Card */
+        .project-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+        }
+
+        .project-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .github-icon {
+            color: var(--text-primary);
+            flex-shrink: 0;
+        }
+
+        .project-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .project-title:hover {
+            text-decoration: underline;
+        }
+
+        .project-description {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .project-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .feature-tag {
+            background: var(--accent-light);
+            color: var(--accent);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .section {
+            animation: fadeInUp 0.4s ease forwards;
+        }
+
+        .section:nth-child(2) { animation-delay: 0.1s; }
+        .section:nth-child(3) { animation-delay: 0.2s; }
+        .section:nth-child(4) { animation-delay: 0.3s; }
+
+        .chart-card {
+            animation: fadeInUp 0.4s ease forwards;
+        }
+
+        .chart-card:nth-child(2) { animation-delay: 0.1s; }
+        .chart-card:nth-child(3) { animation-delay: 0.15s; }
+        .chart-card:nth-child(4) { animation-delay: 0.2s; }
+        .chart-card:nth-child(5) { animation-delay: 0.25s; }
+        .chart-card:nth-child(6) { animation-delay: 0.3s; }
+
+        .card {
+            animation: fadeInUp 0.4s ease forwards;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header {
+                padding: 0.75rem 1rem;
+            }
+
+            .toggle-btn {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.8rem;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+                <span data-i18n="logo">LLM Benchmark</span>
+            </div>
+            <div class="author">
+                <a href="https://github.com/noderguru" target="_blank" rel="noopener noreferrer" data-i18n="author_link">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    <span data-i18n="author_name">noderguru</span>
+                </a>
+            </div>
+            <div class="controls">
+                <div class="toggle-group">
+                    <button class="toggle-btn active" data-lang="en">EN</button>
+                    <button class="toggle-btn" data-lang="ru">RU</button>
+                </div>
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                    </svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <h1 class="page-title" data-i18n="title">LLM Models Comparison</h1>
+            <p class="page-subtitle" data-i18n="subtitle">Benchmarks MMLU, HumanEval, MATH, GSM8K, IFEval, BFCL &middot; April 2026</p>
+
+            <!-- Benchmarks Table -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3v18h18"/>
+                            <path d="M18 17V9"/>
+                            <path d="M13 17V5"/>
+                            <path d="M8 17v-3"/>
+                        </svg>
+                        <span data-i18n="benchmarks_title">Benchmark Results</span>
+                    </h2>
+                </div>
+                <div class="table-wrapper">
+                    <table id="benchmarkTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="model">Model</th>
+                                <th>MMLU</th>
+                                <th>HumanEval</th>
+                                <th>MATH</th>
+                                <th>GSM8K</th>
+                                <th>IFEval</th>
+                                <th>BFCL</th>
+                                <th data-i18n="input_price">Input</th>
+                                <th data-i18n="output_price">Output</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <p class="note" data-i18n="table_note">Reference models (highlighted) serve as quality benchmarks. Values marked "~" are approximate from public sources.</p>
+            </section>
+
+            <!-- Charts -->
+            <h2 class="section-title" style="margin: 2rem 0 1rem; font-size: 1.25rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;color:var(--accent)">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18"/>
+                    <path d="M9 21V9"/>
+                </svg>
+                <span data-i18n="charts_title">Performance Visualization</span>
+            </h2>
+            <div class="charts-grid" id="chartsContainer"></div>
+
+            <!-- Cost Analysis -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        <span data-i18n="cost_title">Cost Analysis</span>
+                    </h2>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th data-i18n="model">Model</th>
+                                <th data-i18n="mmlu_cost">MMLU $/1%</th>
+                                <th data-i18n="humaneval_cost">HumanEval $/1%</th>
+                                <th data-i18n="math_cost">MATH $/1%</th>
+                                <th data-i18n="verdict">Verdict</th>
+                            </tr>
+                        </thead>
+                        <tbody id="costTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Key Insights -->
+            <h2 class="section-title" style="margin: 2rem 0 1rem; font-size: 1.25rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;color:var(--accent)">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 16v-4"/>
+                    <path d="M12 8h.01"/>
+                </svg>
+                <span data-i18n="insights_title">Key Insights</span>
+            </h2>
+            <div class="cards-grid" id="insightsGrid"></div>
+
+            <!-- Conclusions -->
+            <h2 class="section-title" style="margin: 2rem 0 1rem; font-size: 1.25rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;color:var(--accent)">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <path d="M14 2v6h6"/>
+                    <path d="M16 13H8"/>
+                    <path d="M16 17H8"/>
+                    <path d="M10 9H8"/>
+                </svg>
+                <span data-i18n="conclusions_title">Conclusions</span>
+            </h2>
+
+            <div id="conclusionsContainer"></div>
+
+            <!-- AI Provider Switch -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                        </svg>
+                        <span data-i18n="ai_switch_title">Related Project</span>
+                    </h2>
+                </div>
+                <div class="project-card">
+                    <div class="project-header">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24" class="github-icon">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                        <a href="https://github.com/noderguru/ai-provider-switch" target="_blank" rel="noopener noreferrer" class="project-title">
+                            ai-provider-switch
+                        </a>
+                    </div>
+                    <p class="project-description" data-i18n="ai_switch_desc">Lightweight CLI tool that switches Claude Code's AI backend between free cloud models via Ollama and DeepSeek-V4 via DeepSeek API. Perfect for toggling between free and paid providers.</p>
+                    <div class="project-features">
+                        <span class="feature-tag" data-i18n="ai_switch_feat_1">Checks dependencies</span>
+                        <span class="feature-tag" data-i18n="ai_switch_feat_2">Auto-detects providers</span>
+                        <span class="feature-tag" data-i18n="ai_switch_feat_3">One-command switch</span>
+                        <span class="feature-tag" data-i18n="ai_switch_feat_4">Version validation</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sources -->
+            <section class="section" style="margin-top: 2rem;">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                        <span data-i18n="sources_title">Sources</span>
+                    </h2>
+                </div>
+                <div class="sources-grid" id="sourcesContainer"></div>
+            </section>
+
+            <footer class="footer"></footer>
+        </div>
+    </main>
+
+    <script>
+        // Translations
+        const translations = {
+            en: {
+                logo: "LLM Benchmark",
+                title: "LLM Models Comparison",
+                subtitle: "Benchmarks MMLU, HumanEval, MATH, GSM8K, IFEval, BFCL &middot; April 2026",
+                benchmarks_title: "Benchmark Results",
+                model: "Model",
+                input_price: "Input",
+                output_price: "Output",
+                table_note: "Reference models (highlighted) serve as quality benchmarks. Values marked \"~\" are approximate from public sources.",
+                charts_title: "Performance Visualization",
+                cost_title: "Cost Analysis",
+                mmlu_cost: "MMLU $/1%",
+                humaneval_cost: "HumanEval $/1%",
+                math_cost: "MATH $/1%",
+                verdict: "Verdict",
+                insights_title: "Key Insights",
+                conclusions_title: "Conclusions",
+                footer: "Data from public sources: BenchLM.ai, Artificial Analysis, OpenRouter, CloudPrice.net &middot; April 2026",
+                footer_note: "Prices and benchmarks may vary. Verify before making decisions.",
+                best_value: "Best Value",
+                top_performer: "Top Performer",
+                budget_king: "Budget King",
+                great_balance: "Great Balance",
+                agent_tasks: "Agent Tasks",
+                coding_agent: "Coding Agent",
+                fast_inference: "Fast Inference",
+                coding_specialist: "Coding Specialist",
+                conclusion_best_value: "Most Cost-Effective",
+                conclusion_best_value_subtitle: "If budget matters and you need reliable quality:",
+                conclusion_best_bang: "Best Price/Quality",
+                conclusion_best_bang_subtitle: "For balanced performance across all tasks:",
+                conclusion_agents: "For Personal Agents",
+                conclusion_agents_subtitle: "OpenClaw, Hermes Agent recommended stack:",
+                conclusion_coding: "For Coding",
+                conclusion_coding_subtitle: "Detailed comparison:",
+                conclusion_reference: "Reference Models",
+                conclusion_reference_subtitle: "Quality benchmarks to aim for:",
+                conclusion_final: "Final Recommendations",
+                recommendation: "Recommendation",
+                scenario: "Scenario",
+                alternative: "Alternative",
+                note: "Note",
+                coding_king: "Coding King",
+                best_overall: "Best Overall",
+                agentic_coding: "Agentic Coding",
+                all_rounder: "All-Rounder",
+                sources_title: "Sources",
+                author_name: "noderguru",
+                author_link: "Author",
+                insight_best_value: "Unbeatable price/quality ratio. MMLU 88.5% at $0.15/$0.75 per 1M tokens. 50-100x cheaper than Claude/GPT with comparable performance.",
+                insight_top_performer: "87.8% MMLU, 88% HumanEval, 87% MATH — near frontier-level at $0.22/$1.00. Best choice for most tasks without overpay.",
+                insight_fast_inference: "449 tokens/sec — speed leader in its tier. 1M context window. Ideal for high-throughput workloads.",
+                insight_coding_specialist: "93.9% on HumanEval — one of the top scorers for code generation. Specialized coding model at accessible price.",
+                insight_agent_tasks: "76.8% BFCL (best among compared!), 80.2% SWE-bench. Optimized for tool use and agent workflows.",
+                insight_best_overall: "93.5% LiveCodeBench, 90% HumanEval. Open-source model closing in on proprietary frontier.",
+                agent_item_1: "<strong>minimax-m2.5</strong> — BFCL 76.8% (best!), 196K context, ~$0.30/$2.40",
+                agent_item_2: "<strong>minimax-m2.7</strong> — improved intelligence (49.6 vs 41.9), GPQA 87.4%, ~$0.30/$1.20",
+                agent_item_3: "<strong>Qwen3.5</strong> — if broader capability set needed, ~$0.22/$1.00",
+                agent_item_4: "<strong>Nemotron-3-Super</strong> — if speed critical (449 tok/s), ~$0.30/$0.80",
+                ai_switch_title: "Related Project",
+                ai_switch_desc: "Lightweight CLI tool that switches Claude Code's AI backend between free cloud models via Ollama and DeepSeek-V4 via DeepSeek API. Perfect for toggling between free and paid providers depending on task complexity.",
+                ai_switch_feat_1: "Checks dependencies",
+                ai_switch_feat_2: "Auto-detects providers",
+                ai_switch_feat_3: "One-command switch",
+                ai_switch_feat_4: "Version validation"
+            },
+            ru: {
+                logo: "LLM Benchmark",
+                title: "Сравнение LLM моделей",
+                subtitle: "Бенчмарки MMLU, HumanEval, MATH, GSM8K, IFEval, BFCL &middot; Апрель 2026",
+                benchmarks_title: "Результаты бенчмарков",
+                model: "Модель",
+                input_price: "Вход",
+                output_price: "Выход",
+                table_note: "Референсные модели (выделены) служат ориентирами качества. Значения \"~\" приблизительные из публичных источников.",
+                charts_title: "Визуализация производительности",
+                cost_title: "Анализ стоимости",
+                mmlu_cost: "MMLU $/1%",
+                humaneval_cost: "HumanEval $/1%",
+                math_cost: "MATH $/1%",
+                verdict: "Оценка",
+                insights_title: "Ключевые выводы",
+                conclusions_title: "Итоговые выводы",
+                footer: "Данные из публичных источников: BenchLM.ai, Artificial Analysis, OpenRouter, CloudPrice.net &middot; Апрель 2026",
+                footer_note: "Цены и бенчмарки могут отличаться. Проверяйте перед принятием решений.",
+                best_value: "Лучшая цена",
+                top_performer: "Топ исполнитель",
+                budget_king: "Бюджетный король",
+                great_balance: "Отличный баланс",
+                agent_tasks: "Агентные задачи",
+                coding_agent: "Кодинг агент",
+                fast_inference: "Быстрый вывод",
+                coding_specialist: "Специалист по коду",
+                conclusion_best_value: "Самое выгодное",
+                conclusion_best_value_subtitle: "Если важен бюджет и нужна надёжное качество:",
+                conclusion_best_bang: "Лучшее соотношение цена/качество",
+                conclusion_best_bang_subtitle: "Для сбалансированной производительности:",
+                conclusion_agents: "Для персональных агентов",
+                conclusion_agents_subtitle: "Рекомендуемый стек для OpenClaw, Hermes Agent:",
+                conclusion_coding: "Для кодинга",
+                conclusion_coding_subtitle: "Детальное сравнение:",
+                conclusion_reference: "Референсные модели",
+                conclusion_reference_subtitle: "Ориентиры качества:",
+                conclusion_final: "Финальные рекомендации",
+                recommendation: "Рекомендация",
+                alternative: "Альтернатива",
+                note: "Примечание",
+                coding_king: "Король кодинга",
+                best_overall: "Лучший Overall",
+                agentic_coding: "Agentic кодинг",
+                all_rounder: "Универсал",
+                sources_title: "Источники",
+                author_name: "noderguru",
+                author_link: "Автор",
+                insight_best_value: "Невероятное соотношение цена/качество. MMLU 88.5% при $0.15/$0.75 за 1M токенов. В 50-100x дешевле Claude/GPT при сопоставимой производительности.",
+                insight_top_performer: "87.8% MMLU, 88% HumanEval, 87% MATH — почти frontier-level при $0.22/$1.00. Лучший выбор для большинства задач без переплаты.",
+                insight_fast_inference: "449 tok/sec — лидер скорости в своём tier. 1M context window. Идеально для high-throughput задач.",
+                insight_coding_specialist: "93.9% на HumanEval — один из топов по code generation. Специализированная coding модель по доступной цене.",
+                insight_agent_tasks: "76.8% BFCL (лучший среди сравниваемых!), 80.2% SWE-bench. Оптимизирован для tool use и agent workflows.",
+                insight_best_overall: "93.5% LiveCodeBench, 90% HumanEval. Open-source модель, догоняющая proprietary frontier.",
+                agent_item_1: "<strong>minimax-m2.5</strong> — BFCL 76.8% (лучший!), 196K context, ~$0.30/$2.40",
+                agent_item_2: "<strong>minimax-m2.7</strong> — улучшенный intelligence (49.6 vs 41.9), GPQA 87.4%, ~$0.30/$1.20",
+                agent_item_3: "<strong>Qwen3.5</strong> — если нужен более широкий capability set, ~$0.22/$1.00",
+                agent_item_4: "<strong>Nemotron-3-Super</strong> — если критична скорость (449 tok/s), ~$0.30/$0.80",
+                ai_switch_title: "Связанный проект",
+                ai_switch_desc: "Легковесный CLI инструмент для переключения AI бэкенда Claude Code между бесплатными облачными моделями через Ollama и DeepSeek-V4 через DeepSeek API. Идеально для переключения между бесплатными и платными провайдерами.",
+                ai_switch_feat_1: "Проверка зависимостей",
+                ai_switch_feat_2: "Автоопределение провайдеров",
+                ai_switch_feat_3: "Переключение в одну команду",
+                ai_switch_feat_4: "Валидация версий"
+            }
+        };
+
+        // Sources data
+        const sources = [
+            { title: 'BenchLM.ai — LLM Leaderboard', url: 'https://benchlm.ai/', desc: 'Comprehensive benchmark tracking and model rankings' },
+            { title: 'Artificial Analysis', url: 'https://artificialanalysis.ai/', desc: 'Performance benchmarking and provider analysis' },
+            { title: 'OpenRouter — Model Rankings', url: 'https://openrouter.ai/models', desc: 'API pricing and model availability' },
+            { title: 'CloudPrice.net', url: 'https://cloudprice.net/', desc: 'LLM pricing comparison across providers' },
+            { title: 'Berkeley Function Calling Leaderboard', url: 'https://gorilla.cs.berkeley.edu/leaderboard.html', desc: 'Official BFCL benchmark results' },
+            { title: 'TokenCalculator — LLM Benchmarks', url: 'https://tokencalculator.com/llm-benchmarks', desc: 'Benchmark scores comparison' },
+            { title: 'Minimax M2.7 — BenchGecko', url: 'https://benchgecko.ai/model/minimax-m2-7', desc: 'Model-specific benchmark data' },
+            { title: 'Qwen3.5 — Official AI', url: 'https://qwen-ai.com/', desc: 'Model specifications and capabilities' }
+        ];
+
+        // Data
+        const models = [
+            { name: 'Claude Opus 4.7', mmlu: 91.5, humanEval: 93, math: 95, gsm8k: 98, ifEval: 90, bfcl: 75, input: 15.00, output: 75.00, isRef: true },
+            { name: 'GPT-5.4', mmlu: 93.0, humanEval: 94.1, math: 96, gsm8k: 98.1, ifEval: 92, bfcl: 70, input: 10.00, output: 40.00, isRef: true },
+            { name: 'GLM-5.1', mmlu: 85, humanEval: 85, math: 90, gsm8k: 93, ifEval: 76.3, bfcl: 72, input: 1.40, output: 4.40, isRef: true },
+            { name: 'Kimi-K2.6', mmlu: 82, humanEval: 88, math: 91, gsm8k: 95, ifEval: 85, bfcl: 70, input: 0.60, output: 2.80, isRef: true },
+            { name: 'DeepSeek-V4-Pro', mmlu: 87.5, humanEval: 90, math: 93, gsm8k: 94, ifEval: 87, bfcl: 72, input: 0.50, output: 2.00, isRef: true },
+            { name: 'minimax-m2.5', mmlu: 78, humanEval: 75, math: 80, gsm8k: 88, ifEval: 76, bfcl: 76.8, input: 0.30, output: 2.40, isRef: false },
+            { name: 'minimax-m2.7', mmlu: 77, humanEval: 72, math: 78, gsm8k: 85, ifEval: 75.7, bfcl: 70, input: 0.30, output: 1.20, isRef: false },
+            { name: 'Qwen3.5', mmlu: 87.8, humanEval: 88, math: 87, gsm8k: 95, ifEval: 85, bfcl: 68, input: 0.22, output: 1.00, isRef: false },
+            { name: 'Qwen3-Coder-480B', mmlu: 78, humanEval: 93.9, math: 82, gsm8k: 88, ifEval: 80, bfcl: 65, input: 0.22, output: 1.00, isRef: false },
+            { name: 'DeepSeek-V3.1-671B', mmlu: 88.5, humanEval: 82.6, math: 90.2, gsm8k: 89.3, ifEval: 86.1, bfcl: 65, input: 0.15, output: 0.75, isRef: false },
+            { name: 'GPT-OSS-120B', mmlu: 77, humanEval: 70, math: 75, gsm8k: 85, ifEval: 80, bfcl: 65, input: 0.039, output: 0.15, isRef: false },
+            { name: 'Ministral-3-14B', mmlu: 68, humanEval: 60, math: 62, gsm8k: 78, ifEval: 70, bfcl: 60, input: 0.20, output: 0.20, isRef: false },
+            { name: 'Nemotron-3-Super', mmlu: 75, humanEval: 60, math: 70, gsm8k: 82, ifEval: 78, bfcl: 62, input: 0.30, output: 0.80, isRef: false },
+            { name: 'Gemini-3-Flash', mmlu: 91.8, humanEval: 78, math: 88, gsm8k: 95, ifEval: 88, bfcl: 68, input: 0.50, output: 3.00, isRef: false },
+            { name: 'GLM-4.7', mmlu: 79, humanEval: 75, math: 78, gsm8k: 85, ifEval: 76, bfcl: 68, input: 0.60, output: 2.20, isRef: false },
+            { name: 'DeepSeek-V3.2', mmlu: 87.1, humanEval: 73, math: 88, gsm8k: 93, ifEval: 84, bfcl: 70, input: 0.26, output: 0.42, isRef: false },
+            { name: 'Mistral-Large-3', mmlu: 80, humanEval: 75, math: 80, gsm8k: 88, ifEval: 82, bfcl: 70, input: 0.50, output: 1.50, isRef: false },
+            { name: 'GLM-4.6', mmlu: 78, humanEval: 73, math: 76, gsm8k: 84, ifEval: 74, bfcl: 66, input: 0.55, output: 2.19, isRef: false }
+        ];
+
+        const benchmarks = [
+            { key: 'mmlu', title: 'MMLU', subtitle: 'General Knowledge' },
+            { key: 'humanEval', title: 'HumanEval', subtitle: 'Code Generation' },
+            { key: 'math', title: 'MATH', subtitle: 'Math Problem Solving' },
+            { key: 'gsm8k', title: 'GSM8K', subtitle: 'Reasoning' },
+            { key: 'ifEval', title: 'IFEval', subtitle: 'Instruction Following' },
+            { key: 'bfcl', title: 'BFCL', subtitle: 'Tool Use / Function Calling' }
+        ];
+
+        const insights = [
+            {
+                icon: 'green',
+                iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+                title: 'best_value',
+                textKey: 'insight_best_value',
+                model: 'DeepSeek-V3.1-671B',
+                tagClass: 'green',
+                tagKey: 'best_value'
+            },
+            {
+                icon: 'blue',
+                iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>',
+                title: 'top_performer',
+                textKey: 'insight_top_performer',
+                model: 'Qwen3.5',
+                tagClass: 'blue',
+                tagKey: 'top_performer'
+            },
+            {
+                icon: 'purple',
+                iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+                title: 'fast_inference',
+                textKey: 'insight_fast_inference',
+                model: 'Nemotron-3-Super',
+                tagClass: 'purple',
+                tagKey: 'fast_inference'
+            },
+            {
+                icon: 'orange',
+                iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg>',
+                title: 'coding_specialist',
+                textKey: 'insight_coding_specialist',
+                model: 'Qwen3-Coder-480B',
+                tagClass: 'orange',
+                tagKey: 'coding_specialist'
+            },
+            {
+                icon: 'blue',
+                iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+                title: 'agent_tasks',
+                textKey: 'insight_agent_tasks',
+                model: 'minimax-m2.5',
+                tagClass: 'blue',
+                tagKey: 'agent_tasks'
+            },
+            {
+                icon: 'green',
+                iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+                title: 'best_overall',
+                textKey: 'insight_best_overall',
+                model: 'DeepSeek-V4-Pro',
+                tagClass: 'green',
+                tagKey: 'best_overall'
+            }
+        ];
+
+        // State
+        let currentLang = 'en';
+        let currentTheme = 'light';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            initLanguage();
+            renderTable();
+            renderCharts();
+            renderCostTable();
+            renderInsights();
+            renderConclusions();
+            renderSources();
+        });
+
+        // Theme
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            setTheme(savedTheme);
+
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                setTheme(newTheme);
+            });
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+
+            const sunIcon = document.querySelector('.sun-icon');
+            const moonIcon = document.querySelector('.moon-icon');
+            sunIcon.style.display = theme === 'light' ? 'block' : 'none';
+            moonIcon.style.display = theme === 'dark' ? 'block' : 'none';
+
+            // Re-render charts with new colors
+            setTimeout(renderCharts, 100);
+        }
+
+        // Language
+        function initLanguage() {
+            document.querySelectorAll('.toggle-btn[data-lang]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const lang = btn.dataset.lang;
+                    setLanguage(lang);
+                });
+            });
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('lang', lang);
+
+            document.querySelectorAll('.toggle-btn[data-lang]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    el.innerHTML = translations[lang][key];
+                }
+            });
+
+            // Re-render dynamic content
+            renderTable();
+            renderInsights();
+            renderConclusions();
+        }
+
+        // Render Table
+        function renderTable() {
+            const tbody = document.querySelector('#benchmarkTable tbody');
+            tbody.innerHTML = models.map(m => {
+                const refBadge = m.isRef ? '<span class="reference-badge"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>REF</span>' : '';
+
+                const scoreClass = (score) => {
+                    if (score >= 85) return 'score-high';
+                    if (score >= 70) return 'score-medium';
+                    return 'score-low';
+                };
+
+                return `
+                    <tr class="${m.isRef ? 'reference-row' : ''}">
+                        <td>
+                            <span class="model-name">${refBadge}${m.name}</span>
+                        </td>
+                        <td class="score ${scoreClass(m.mmlu)}">${m.mmlu}%</td>
+                        <td class="score ${scoreClass(m.humanEval)}">${m.humanEval}%</td>
+                        <td class="score ${scoreClass(m.math)}">${m.math}%</td>
+                        <td class="score ${scoreClass(m.gsm8k)}">${m.gsm8k}%</td>
+                        <td class="score ${scoreClass(m.ifEval)}">${m.ifEval}%</td>
+                        <td class="score ${scoreClass(m.bfcl)}">${m.bfcl}%</td>
+                        <td class="price-input">$${m.input.toFixed(2)}</td>
+                        <td class="price-output">$${m.output.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Render Charts
+        function renderCharts() {
+            const container = document.getElementById('chartsContainer');
+            container.innerHTML = benchmarks.map(b => `
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3v18h18"/>
+                            <rect x="7" y="10" width="3" height="8" rx="1"/>
+                            <rect x="14" y="6" width="3" height="12" rx="1"/>
+                        </svg>
+                        ${b.title}
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-${b.key}"></canvas>
+                    </div>
+                </div>
+            `).join('');
+
+            const chartColors = getChartColors();
+
+            benchmarks.forEach(b => {
+                const ctx = document.getElementById(`chart-${b.key}`).getContext('2d');
+                const sortedModels = [...models].sort((a, xb) => xb[b.key] - a[b.key]);
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedModels.map(m => m.name),
+                        datasets: [{
+                            data: sortedModels.map(m => m[b.key]),
+                            backgroundColor: sortedModels.map(m =>
+                                m.isRef ? chartColors.referenceBg : chartColors.barBg
+                            ),
+                            borderColor: sortedModels.map(m =>
+                                m.isRef ? chartColors.reference : chartColors.bar
+                            ),
+                            borderWidth: sortedModels.map(m => m.isRef ? 2 : 1),
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => `${ctx.raw}%`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    color: currentTheme === 'dark' ? '#8b949e' : '#6c757d',
+                                    callback: v => v + '%'
+                                },
+                                grid: {
+                                    color: currentTheme === 'dark' ? 'rgba(48,54,61,0.5)' : 'rgba(0,0,0,0.06)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: currentTheme === 'dark' ? '#8b949e' : '#6c757d',
+                                    font: { size: 9 }
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        function getChartColors() {
+            if (currentTheme === 'dark') {
+                return {
+                    bar: '#58a6ff',
+                    barBg: 'rgba(88, 166, 255, 0.6)',
+                    reference: '#f06595',
+                    referenceBg: 'rgba(240, 101, 149, 0.3)',
+                    text: '#e6edf3',
+                    grid: 'rgba(48,54,61,0.5)'
+                };
+            }
+            return {
+                bar: '#4361ee',
+                barBg: 'rgba(67, 97, 238, 0.7)',
+                reference: '#f06595',
+                referenceBg: 'rgba(240, 101, 149, 0.25)',
+                text: '#1a1a2e',
+                grid: 'rgba(0,0,0,0.06)'
+            };
+        }
+
+        // Render Cost Table
+        function renderCostTable() {
+            const tbody = document.getElementById('costTableBody');
+            const costData = [
+                { model: 'DeepSeek-V3.1-671B', mmluCost: 0.0017, humanEvalCost: 0.009, mathCost: 0.008, tagClass: 'green', tagKey: 'best_value' },
+                { model: 'GPT-OSS-120B', mmluCost: 0.0005, humanEvalCost: 0.002, mathCost: 0.009, tagClass: 'blue', tagKey: 'budget_king' },
+                { model: 'Qwen3.5', mmluCost: 0.0025, humanEvalCost: 0.011, mathCost: 0.011, tagClass: 'green', tagKey: 'top_performer' },
+                { model: 'DeepSeek-V3.2', mmluCost: 0.003, humanEvalCost: 0.006, mathCost: 0.005, tagClass: 'blue', tagKey: 'great_balance' },
+                { model: 'minimax-m2.5', mmluCost: 0.004, humanEvalCost: 0.032, mathCost: 0.030, tagClass: 'blue', tagKey: 'agent_tasks' },
+                { model: 'minimax-m2.7', mmluCost: 0.004, humanEvalCost: 0.017, mathCost: 0.015, tagClass: 'orange', tagKey: 'coding_agent' },
+                { model: 'Nemotron-3-Super', mmluCost: 0.004, humanEvalCost: 0.013, mathCost: 0.011, tagClass: 'purple', tagKey: 'fast_inference' },
+                { model: 'Qwen3-Coder-480B', mmluCost: 0.0028, humanEvalCost: 0.011, mathCost: 0.012, tagClass: 'orange', tagKey: 'coding_specialist' }
+            ];
+
+            tbody.innerHTML = costData.map(d => `
+                <tr>
+                    <td class="model-name">${d.model}</td>
+                    <td class="score score-high">$${d.mmluCost.toFixed(4)}</td>
+                    <td class="score score-medium">$${d.humanEvalCost.toFixed(4)}</td>
+                    <td class="score score-medium">$${d.mathCost.toFixed(4)}</td>
+                    <td><span class="tag ${d.tagClass}">${translations[currentLang][d.tagKey]}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // Render Insights
+        function renderInsights() {
+            const grid = document.getElementById('insightsGrid');
+            grid.innerHTML = insights.map(i => `
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon ${i.icon}">${i.iconSvg}</div>
+                        <span class="card-title">${translations[currentLang][i.title]}</span>
+                    </div>
+                    <div class="card-model">${i.model}</div>
+                    <p>${translations[currentLang][i.textKey]}</p>
+                    <span class="tag ${i.tagClass}">${translations[currentLang][i.tagKey]}</span>
+                </div>
+            `).join('');
+        }
+
+        // Render Conclusions
+        function renderConclusions() {
+            const container = document.getElementById('conclusionsContainer');
+
+            const codingTableRows = [
+                { model: 'Qwen3-Coder-480B', humanEval: '93.9%', swe: '~55%', price: '$0.22/$1.00', tag: 'coding_king', tagClass: 'orange' },
+                { model: 'DeepSeek-V4-Pro', humanEval: '90.0%', swe: '80.6%', price: '$0.50/$2.00', tag: 'best_overall', tagClass: 'green' },
+                { model: 'DeepSeek-V3.2', humanEval: '~73%', swe: '73.1%', price: '$0.26/$0.42', tag: 'best_value', tagClass: 'green' },
+                { model: 'minimax-m2.5', humanEval: '~75%', swe: '80.2%', price: '$0.30/$2.40', tag: 'agentic_coding', tagClass: 'blue' },
+                { model: 'Qwen3.5', humanEval: '88.0%', swe: '76.4%', price: '$0.22/$1.00', tag: 'all_rounder', tagClass: 'blue' },
+                { model: 'GPT-OSS-120B', humanEval: '~70%', swe: '~42%', price: '$0.039/$0.15', tag: 'budget_king', tagClass: 'purple' }
+            ];
+
+            const recommendations = [
+                { scenario: 'Production / Budget', best: 'DeepSeek-V3.1-671B', alt: 'DeepSeek-V3.2', note: '10-50x cheaper than Claude/GPT' },
+                { scenario: 'General Purpose', best: 'Qwen3.5', alt: 'Gemini-3-Flash', note: 'MMLU 87.8%, balanced all-round' },
+                { scenario: 'Personal Agents', best: 'minimax-m2.5', alt: 'minimax-m2.7', note: 'BFCL 76.8% — best for tool use' },
+                { scenario: 'Code Generation', best: 'Qwen3-Coder-480B', alt: 'Qwen3.5', note: 'HumanEval 93.9%' },
+                { scenario: 'Agentic Coding', best: 'minimax-m2.5', alt: 'DeepSeek-V4-Pro', note: '80.2% SWE-bench + 76.8% BFCL' },
+                { scenario: 'Maximum Quality', best: 'Claude Opus 4.7', alt: 'GPT-5.4', note: '$15-75/M — only if budget allows' },
+                { scenario: 'Open Source', best: 'Qwen3.5 / GLM-5.1', alt: 'DeepSeek-V3.1', note: 'Apache 2.0 / MIT licenses' },
+                { scenario: 'High Speed', best: 'Nemotron-3-Super', alt: 'Ministral-3-14B', note: '449 tok/s, 1M context' }
+            ];
+
+            container.innerHTML = `
+                <div class="conclusion-box green">
+                    <h4>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        ${translations[currentLang].conclusion_best_value}
+                    </h4>
+                    <p>${translations[currentLang].conclusion_best_value_subtitle}</p>
+                    <ul>
+                        <li><span class="highlight">DeepSeek-V3.1-671B</span> — MMLU 88.5%, MATH-500 90.2% at $0.15/$0.75</li>
+                        <li>671B params (37B active) — big model power with MoE savings</li>
+                        <li>2.8x cheaper than V3.2, <strong>8-50x cheaper</strong> than Claude/GPT</li>
+                    </ul>
+                </div>
+
+                <div class="conclusion-box orange">
+                    <h4>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <path d="M22 4 12 14.01l-3-3"/>
+                        </svg>
+                        ${translations[currentLang].conclusion_best_bang}
+                    </h4>
+                    <p>${translations[currentLang].conclusion_best_bang_subtitle}</p>
+                    <ul>
+                        <li><span class="highlight">Qwen3.5</span> — MMLU 87.8%, HumanEval 88%, MATH 87%</li>
+                        <li>$0.22/$1.00 — only 50% more than DeepSeek, but excellent coding</li>
+                        <li>262K context, Apache 2.0 license — can fine-tune</li>
+                    </ul>
+                </div>
+
+                <div class="conclusion-box blue">
+                    <h4>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                        ${translations[currentLang].conclusion_agents}
+                    </h4>
+                    <p>${translations[currentLang].conclusion_agents_subtitle}</p>
+                    <ul>
+                        <li>${translations[currentLang].agent_item_1}</li>
+                        <li>${translations[currentLang].agent_item_2}</li>
+                        <li>${translations[currentLang].agent_item_3}</li>
+                        <li>${translations[currentLang].agent_item_4}</li>
+                    </ul>
+                </div>
+
+                <div class="conclusion-box blue">
+                    <h4>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 18l6-6-6-6"/>
+                            <path d="M8 6l-6 6 6 6"/>
+                        </svg>
+                        ${translations[currentLang].conclusion_coding}
+                    </h4>
+                    <p>${translations[currentLang].conclusion_coding_subtitle}</p>
+                    <div class="table-wrapper" style="margin-top: 1rem;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>HumanEval</th>
+                                    <th>SWE-Bench</th>
+                                    <th>Price</th>
+                                    <th>Verdict</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${codingTableRows.map(r => `
+                                    <tr>
+                                        <td class="model-name">${r.model}</td>
+                                        <td class="score score-high">${r.humanEval}</td>
+                                        <td>${r.swe}</td>
+                                        <td class="price-input">${r.price}</td>
+                                        <td><span class="tag ${r.tagClass}">${translations[currentLang][r.tag]}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="conclusion-box green">
+                    <h4>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <path d="M14 2v6h6"/>
+                        </svg>
+                        ${translations[currentLang].conclusion_final}
+                    </h4>
+                    <div class="table-wrapper" style="margin-top: 1rem;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>${translations[currentLang].scenario}</th>
+                                    <th>${translations[currentLang].recommendation}</th>
+                                    <th>${translations[currentLang].alternative}</th>
+                                    <th>${translations[currentLang].note}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${recommendations.map(r => `
+                                    <tr>
+                                        <td class="model-name">${r.scenario}</td>
+                                        <td><span class="highlight">${r.best}</span></td>
+                                        <td>${r.alt}</td>
+                                        <td style="color: var(--text-muted); font-size: 0.85rem;">${r.note}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render Sources
+        function renderSources() {
+            const container = document.getElementById('sourcesContainer');
+            container.innerHTML = sources.map(s => `
+                <div class="source-card">
+                    <span class="source-card-title">${s.title}</span>
+                    <a href="${s.url}" target="_blank" rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                            <polyline points="15 3 21 3 21 9"/>
+                            <line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                        ${s.url}
+                    </a>
+                    <span class="source-desc">${s.desc}</span>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

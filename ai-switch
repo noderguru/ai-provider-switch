@@ -6,8 +6,32 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# === CHECK & FIX DEPENDENCIES ===
+# === AUTO-LOAD SAVED KEYS ===
+# Try to load keys from ~/.bashrc if not already set
+if [ -z "$OLLAMA_API_KEY" ] || [ -z "$DEEPSEEK_API_KEY" ]; then
+    if [ -f ~/.bashrc ]; then
+        # Extract and export saved keys
+        ollama_saved=$(grep "^export OLLAMA_API_KEY=" ~/.bashrc 2>/dev/null | tail -1 | cut -d'"' -f2)
+        deepseek_saved=$(grep "^export DEEPSEEK_API_KEY=" ~/.bashrc 2>/dev/null | tail -1 | cut -d'"' -f2)
+        [ -n "$ollama_saved" ] && export OLLAMA_API_KEY="$ollama_saved"
+        [ -n "$deepseek_saved" ] && export DEEPSEEK_API_KEY="$deepseek_saved"
+    fi
+fi
 
+# === SAVE KEY TO ~/.bashrc FUNCTION ===
+save_key_to_bashrc() {
+    local key_name="$1"
+    local key_value="$2"
+
+    # Remove old entries to avoid duplicates
+    sed -i "/^export ${key_name}=/d" ~/.bashrc
+
+    # Append new key
+    echo "export ${key_name}=\"${key_value}\"" >> ~/.bashrc
+    echo -e "${GREEN}✓ ${key_name} saved to ~/.bashrc for future sessions${NC}"
+}
+
+# === CHECK & FIX DEPENDENCIES ===
 check_node() {
     if ! command -v node &> /dev/null; then
         echo -e "${YELLOW}Node.js not found. Installing...${NC}"
@@ -41,32 +65,32 @@ check_claude() {
         "/root/.claude/bin/claude"
         "$(npm root -g)/@anthropic-ai/claude-code/bin/claude"
     )
-    
+
     for p in "${paths[@]}"; do
         if [ -f "$p" ] || [ -L "$p" ]; then
             claude_path="$p"
             break
         fi
     done
-    
+
     if [ -n "$claude_path" ] && ! command -v claude &> /dev/null; then
         echo -e "${YELLOW}Claude found at $claude_path but not in PATH. Fixing...${NC}"
         ln -sf "$claude_path" /usr/local/bin/claude 2>/dev/null || \
         ln -sf "$claude_path" /root/.local/bin/claude 2>/dev/null || \
         echo 'export PATH="/root/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
     fi
-    
+
     if ! command -v claude &> /dev/null; then
         echo -e "${YELLOW}Claude Code not found. Installing...${NC}"
         curl -fsSL https://claude.ai/install.sh | bash
         export PATH="/root/.local/bin:$PATH"
     fi
-    
+
     if ! command -v claude &> /dev/null; then
         echo -e "${RED}Failed to install Claude Code.${NC}"
         exit 1
     fi
-    
+
     echo -e "${BLUE}Checking for Claude Code updates...${NC}"
     claude update 2>/dev/null || true
     echo -e "${GREEN}✓ Claude Code $(claude --version)${NC}"
@@ -120,7 +144,7 @@ if [ "$provider" == "ollama" ]; then
         exit 0
     fi
 
-    # === CHECK OLLAMA API KEY ===
+    # === CHECK OLLAMA API KEY (auto-load + save) ===
     if [ -z "$OLLAMA_API_KEY" ]; then
         echo ""
         echo -e "${YELLOW}OLLAMA_API_KEY is not set.${NC}"
@@ -136,14 +160,16 @@ if [ "$provider" == "ollama" ]; then
             exit 1
         fi
         export OLLAMA_API_KEY="$ollama_key"
-        echo -e "${GREEN}✓ OLLAMA_API_KEY set for this session${NC}"
+        save_key_to_bashrc "OLLAMA_API_KEY" "$ollama_key"
+    else
+        echo -e "${GREEN}✓ Using saved OLLAMA_API_KEY${NC}"
     fi
 
     export ANTHROPIC_BASE_URL="http://localhost:11434/v1"
     export ANTHROPIC_API_KEY="ollama"
     export ANTHROPIC_MODEL="$model"
     export ANTHROPIC_SMALL_FAST_MODEL="$model"
-    
+
     echo -e "${GREEN}✓ Ollama Cloud | Model: $model${NC}"
     ollama launch claude --model "$model"
 
@@ -164,21 +190,30 @@ elif [ "$provider" == "deepseek" ]; then
         exit 0
     fi
 
-    if [ -z "$ANTHROPIC_AUTH_TOKEN" ] && [ -z "$DEEPSEEK_API_KEY" ]; then
-        echo -e "${YELLOW}Enter DeepSeek API key:${NC}"
+    # === CHECK DEEPSEEK API KEY (auto-load + save) ===
+    if [ -z "$DEEPSEEK_API_KEY" ]; then
+        echo -e "${YELLOW}DEEPSEEK_API_KEY is not set.${NC}"
+        echo -e "${YELLOW}Get your key at: ${BLUE}https://platform.deepseek.com/${NC}"
+        echo -e "${YELLOW}Paste your DeepSeek API key below:${NC}"
         read -s deepseek_key
+        echo ""
         if [ -z "$deepseek_key" ]; then
             echo -e "${RED}Key required${NC}"
             exit 1
         fi
+        export DEEPSEEK_API_KEY="$deepseek_key"
         export ANTHROPIC_AUTH_TOKEN="$deepseek_key"
+        save_key_to_bashrc "DEEPSEEK_API_KEY" "$deepseek_key"
+    else
+        echo -e "${GREEN}✓ Using saved DEEPSEEK_API_KEY${NC}"
+        export ANTHROPIC_AUTH_TOKEN="$DEEPSEEK_API_KEY"
     fi
-    
+
     unset ANTHROPIC_API_KEY
     export ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic"
     export ANTHROPIC_MODEL="$model"
     export ANTHROPIC_SMALL_FAST_MODEL="deepseek-v4-flash"
-    
+
     echo -e "${GREEN}✓ DeepSeek API | Model: $model${NC}"
     claude
 fi

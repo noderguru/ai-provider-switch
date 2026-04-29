@@ -299,10 +299,11 @@ source ~/.bashrc
 
 ### Claude warns about multiple installations
 
-Remove the old npm-global install:
-
 ```bash
-npm -g uninstall @anthropic-ai/claude-code
+rm -f /usr/local/bin/claude
+hash -r
+which -a claude
+claude doctor
 ```
 
 ### Saved keys seem missing
